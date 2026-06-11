@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a1a1a">
+<title>MineLog</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #e0e0e0; -webkit-tap-highlight-color: transparent; }
+.header { background: #1a1a1a; padding: 12px 16px; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+.header h1 { font-size: 18px; font-weight: 600; }
+.sync-status { font-size: 12px; padding: 4px 10px; border-radius: 12px; background: #2a2a2a; color: #888; }
+.sync-status.online { background: #1e3a1e; color: #4ade80; }
+.sync-status.syncing { background: #3a3a1e; color: #facc15; }
+.worker-badge { background: #252525; padding: 6px 12px; border-radius: 20px; font-size: 13px; color: #f59e0b; font-weight: 600; }
+.tabs { display: flex; background: #1a1a1a; border-bottom: 1px solid #333; }
+.tab { flex: 1; padding: 14px; text-align: center; font-size: 14px; font-weight: 500; color: #888; cursor: pointer; border-bottom: 2px solid transparent; }
+.tab.active { color: #f0f0f0; border-bottom-color: #f59e0b; background: #252525; }
+.content { padding: 16px; max-width: 600px; margin: 0 auto; }
+.login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; padding: 20px; }
+.login-screen h2 { font-size: 24px; margin-bottom: 8px; }
+.login-screen p { color: #888; margin-bottom: 30px; }
+.pin-input { width: 200px; text-align: center; font-size: 24px; letter-spacing: 8px; padding: 16px; background: #252525; border: 1px solid #444; border-radius: 10px; color: #f0f0f0; }
+.numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 280px; margin-top: 20px; }
+.numpad-btn { width: 80px; height: 80px; border-radius: 50%; border: 1px solid #444; background: #252525; color: #f0f0f0; font-size: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.numpad-btn:active { background: #333; transform: scale(0.95); }
+.numpad-btn.wide { grid-column: span 2; width: 170px; border-radius: 40px; }
+.clock-section { text-align: center; padding: 30px 20px; background: #1a1a1a; border-radius: 16px; margin-bottom: 16px; border: 1px solid #333; }
+.clock-time { font-size: 48px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.clock-label { font-size: 14px; color: #888; margin-top: 4px; }
+.big-btn { width: 100%; padding: 18px; font-size: 18px; font-weight: 600; border: none; border-radius: 12px; cursor: pointer; margin-top: 20px; transition: all 0.2s; text-transform: uppercase; }
+.big-btn:active { transform: scale(0.98); }
+.btn-clockin { background: #166534; color: #fff; }
+.btn-clockout { background: #dc2626; color: #fff; }
+.current-task { background: #f59e0b; color: #000; padding: 12px 16px; border-radius: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+.task-timer { font-variant-numeric: tabular-nums; font-size: 20px; }
+.activity-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 16px; }
+.activity-btn { padding: 20px 12px; background: #252525; border: 1px solid #444; border-radius: 12px; color: #e0e0e0; font-size: 15px; font-weight: 500; cursor: pointer; text-align: center; }
+.activity-btn:active { transform: scale(0.96); background: #333; }
+.activity-btn.active-task { background: #f59e0b; color: #000; border-color: #f59e0b; }
+.input-group { margin-bottom: 14px; }
+.input-group label { display: block; font-size: 13px; color: #888; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+input, textarea { width: 100%; padding: 14px; background: #252525; border: 1px solid #444; border-radius: 10px; color: #f0f0f0; font-size: 16px; outline: none; }
+input:focus, textarea:focus { border-color: #f59e0b; }
+textarea { min-height: 80px; resize: vertical; }
+.btn-primary { width: 100%; padding: 16px; background: #f59e0b; color: #000; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 10px; }
+.btn-secondary { width: 100%; padding: 14px; background: transparent; border: 1px solid #444; color: #888; border-radius: 12px; font-size: 15px; cursor: pointer; margin-top: 8px; }
+.stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
+.stat-card { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 20px; text-align: center; }
+.stat-value { font-size: 32px; font-weight: 700; color: #f59e0b; font-variant-numeric: tabular-nums; }
+.stat-label { font-size: 12px; color: #888; margin-top: 4px; text-transform: uppercase; }
+.efficiency-section { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.eff-bar-bg { background: #252525; height: 24px; border-radius: 12px; overflow: hidden; margin-top: 10px; }
+.eff-bar-fill { height: 100%; background: #f59e0b; border-radius: 12px; transition: width 0.5s ease; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; font-size: 12px; font-weight: 700; color: #000; }
+.log-list { display: flex; flex-direction: column; gap: 10px; }
+.log-entry { background: #1a1a1a; border: 1px solid #333; border-radius: 12px; padding: 14px; display: flex; justify-content: space-between; align-items: flex-start; }
+.log-info h3 { font-size: 15px; margin-bottom: 4px; }
+.log-info p { font-size: 13px; color: #888; }
+.log-duration { background: #252525; padding: 4px 10px; border-radius: 6px; font-size: 13px; color: #f59e0b; font-weight: 600; margin-top: 6px; display: inline-block; }
+.sync-indicator { font-size: 11px; padding: 2px 8px; border-radius: 4px; margin-top: 6px; display: inline-block; }
+.sync-indicator.synced { background: #1e3a1e; color: #4ade80; }
+.sync-indicator.pending { background: #3a3a1e; color: #facc15; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="login-screen" id="loginScreen">
+  <h2>⛏️ MineLog</h2>
+  <p>Enter Badge ID</p>
+  <input type="password" class="pin-input" id="badgeInput" readonly placeholder="----">
+  <div class="numpad">
+    <button class="numpad-btn" onclick="enterDigit('1')">1</button>
+    <button class="numpad-btn" onclick="enterDigit('2')">2</button>
+    <button class="numpad-btn" onclick="enterDigit('3')">3</button>
+    <button class="numpad-btn" onclick="enterDigit('4')">4</button>
+    <button class="numpad-btn" onclick="enterDigit('5')">5</button>
+    <button class="numpad-btn" onclick="enterDigit('6')">6</button>
+    <button class="numpad-btn" onclick="enterDigit('7')">7</button>
+    <button class="numpad-btn" onclick="enterDigit('8')">8</button>
+    <button class="numpad-btn" onclick="enterDigit('9')">9</button>
+    <button class="numpad-btn" onclick="clearBadge()">C</button>
+    <button class="numpad-btn" onclick="enterDigit('0')">0</button>
+    <button class="numpad-btn" onclick="backspace()">⌫</button>
+    <button class="numpad-btn wide" onclick="login()">ENTER</button>
+  </div>
+</div>
+
+<div id="mainApp" class="hidden">
+  <div class="header">
+    <h1>⛏️ MineLog</h1>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <span class="worker-badge" id="workerBadge">--</span>
+      <div class="sync-status" id="syncStatus">● Offline</div>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('log')">Log</div>
+    <div class="tab" onclick="switchTab('stats')">Stats</div>
+    <div class="tab" onclick="switchTab('history')">History</div>
+  </div>
+
+  <div class="content" id="tab-log">
+    <div class="clock-section">
+      <div class="clock-time" id="clockTime">00:00:00</div>
+      <div class="clock-label" id="shiftStatus">Not Clocked In</div>
+      <button class="big-btn btn-clockin" id="clockBtn" onclick="toggleClock()">Clock In</button>
+    </div>
+
+    <div id="taskSection" class="hidden">
+      <div class="current-task" id="currentTaskBanner" style="display: none;">
+        <span id="currentTaskName">--</span>
+        <span class="task-timer" id="taskTimer">00:00</span>
+      </div>
+
+      <div class="input-group">
+        <label>Activity</label>
+        <div class="activity-grid">
+          <button class="activity-btn" onclick="startTask('Drilling')">Drilling</button>
+          <button class="activity-btn" onclick="startTask('Hauling')">Hauling</button>
+          <button class="activity-btn" onclick="startTask('Loading')">Loading</button>
+          <button class="activity-btn" onclick="startTask('Maintenance')">Maintenance</button>
+          <button class="activity-btn" onclick="startTask('Safety')">Safety</button>
+          <button class="activity-btn" onclick="startTask('Delay')">Delay</button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Equipment</label>
+        <input type="text" id="equipmentInput" placeholder="Drill #3, Section B" autocomplete="off">
+      </div>
+
+      <div class="input-group">
+        <label>Notes</label>
+        <textarea id="notesInput" placeholder="Issues, delays..."></textarea>
+      </div>
+
+      <button class="btn-primary" onclick="completeTask()">Done</button>
+      <button class="btn-secondary" onclick="endShift()">End Shift</button>
+    </div>
+  </div>
+
+  <div class="content hidden" id="tab-stats">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value" id="statHours">0.0</div><div class="stat-label">Hours</div></div>
+      <div class="stat-card"><div class="stat-value" id="statTasks">0</div><div class="stat-label">Tasks</div></div>
+      <div class="stat-card"><div class="stat-value" id="statEfficiency">0%</div><div class="stat-label">Efficiency</div></div>
+      <div class="stat-card"><div class="stat-value" id="statProductive">0%</div><div class="stat-label">Productive</div></div>
+    </div>
+    <div class="efficiency-section">
+      <div style="font-size: 13px; color: #888; margin-bottom: 8px;">EFFICIENCY</div>
+      <div class="eff-bar-bg"><div class="eff-bar-fill" id="effBar" style="width: 0%">0%</div></div>
+    </div>
+    <div class="efficiency-section">
+      <div style="font-size: 13px; color: #888; margin-bottom: 12px;">BREAKDOWN</div>
+      <div id="breakdownList"></div>
+    </div>
+  </div>
+
+  <div class="content hidden" id="tab-history">
+    <div class="input-group">
+      <input type="date" id="historyDate" onchange="loadHistory()">
+    </div>
+    <div class="log-list" id="historyList"></div>
+    <button class="btn-secondary" onclick="exportData()" style="margin-top: 20px;">Export CSV</button>
+    <button class="btn-secondary" onclick="logout()">Log Out</button>
+  </div>
+</div>
+
+<script>
+const API = window.location.origin + '/api';
+const SYNC = 30000;
+
+let state = { worker: null, clockedIn: false, clockInTime: null, shiftId: null, currentTask: null, taskStartTime: null, tasks: [], syncQueue: [], lastSync: null };
+let badgeBuffer = '';
+
+function enterDigit(d) { if (badgeBuffer.length < 6) { badgeBuffer += d; document.getElementById('badgeInput').value = badgeBuffer.replace(/./g, '●'); }}
+function clearBadge() { badgeBuffer = ''; document.getElementById('badgeInput').value = ''; }
+function backspace() { badgeBuffer = badgeBuffer.slice(0, -1); document.getElementById('badgeInput').value = badgeBuffer.replace(/./g, '●'); }
+
+async function login() {
+  if (!badgeBuffer) return;
+  try {
+    const res = await fetch(`${API}/workers/${badgeBuffer}`);
+    if (!res.ok) throw new Error();
+    const worker = await res.json();
+    state.worker = worker;
+    localStorage.setItem('minelog_worker', JSON.stringify(worker));
+    document.getElementById('workerBadge').textContent = worker.name;
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    loadLocalState();
+    checkActiveShift();
+    attemptSync();
+  } catch {
+    alert('Try 1234 or 5678');
+    clearBadge();
+  }
+}
+
+function logout() { localStorage.clear(); location.reload(); }
+
+const saved = localStorage.getItem('minelog_worker');
+if (saved) {
+  state.worker = JSON.parse(saved);
+  document.getElementById('workerBadge').textContent = state.worker.name;
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('mainApp').classList.remove('hidden');
+  loadLocalState();
+  checkActiveShift();
+}
+
+function loadLocalState() {
+  const s = localStorage.getItem('minelog_state');
+  if (s) {
+    const l = JSON.parse(s);
+    Object.assign(state, l);
+    if (state.clockedIn) {
+      document.getElementById('clockBtn').textContent = 'Clock Out';
+      document.getElementById('clockBtn').className = 'big-btn btn-clockout';
+      document.getElementById('shiftStatus').textContent = 'Shift Active';
+      document.getElementById('taskSection').classList.remove('hidden');
+    }
+    if (state.currentTask) updateTaskBanner();
+    updateStats();
+    loadHistory();
+  }
+}
+
+function saveLocalState() {
+  localStorage.setItem('minelog_state', JSON.stringify({
+    tasks: state.tasks, syncQueue: state.syncQueue, clockedIn: state.clockedIn,
+    clockInTime: state.clockInTime, shiftId: state.shiftId,
+    currentTask: state.currentTask, taskStartTime: state.taskStartTime
+  }));
+}
+
+async function attemptSync() {
+  if (!navigator.onLine || !state.worker || !state.syncQueue.length) return;
+  updateSyncStatus('syncing');
+  try {
+    const res = await fetch(`${API}/sync`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ worker_id: state.worker.id, items: state.syncQueue })
+    });
+    const result = await res.json();
+    const synced = result.results.filter(r => r.status === 'synced').map(r => r.local_id);
+    state.syncQueue = state.syncQueue.filter(i => !synced.includes(i.local_id));
+    state.lastSync = Date.now();
+    saveLocalState();
+    updateSyncStatus('online');
+    if (state.shiftId) fetchServerTasks();
+  } catch {
+    updateSyncStatus('error');
+  }
+}
+
+function updateSyncStatus(status) {
+  const el = document.getElementById('syncStatus');
+  el.className = 'sync-status ' + status;
+  el.textContent = status === 'online' ? '● Online' : status === 'syncing' ? '⟳ Syncing' : status === 'error' ? '✕ Error' : '● Offline';
+}
+
+function addToQueue(item) {
+  item.local_id = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  state.syncQueue.push(item);
+  saveLocalState();
+  attemptSync();
+}
+
+setInterval(attemptSync, SYNC);
+
+async function checkActiveShift() {
+  if (!state.worker) return;
+  try {
+    const res = await fetch(`${API}/shifts/active/${state.worker.id}`);
+    const shift = await res.json();
+    if (shift) {
+      state.shiftId = shift.id;
+      state.clockedIn = true;
+      state.clockInTime = new Date(shift.clock_in).getTime();
+      document.getElementById('clockBtn').textContent = 'Clock Out';
+      document.getElementById('clockBtn').className = 'big-btn btn-clockout';
+      document.getElementById('shiftStatus').textContent = 'Shift Active';
+      document.getElementById('taskSection').classList.remove('hidden');
+      saveLocalState();
+    }
+  } catch {}
+}
+
+async function toggleClock() {
+  if (!state.clockedIn) {
+    const now = Date.now();
+    const iso = new Date(now).toISOString();
+    state.clockedIn = true;
+    state.clockInTime = now;
+    document.getElementById('clockBtn').textContent = 'Clock Out';
+    document.getElementById('clockBtn').className = 'big-btn btn-clockout';
+    document.getElementById('shiftStatus').textContent = 'Shift Active';
+    document.getElementById('taskSection').classList.remove('hidden');
+    addToQueue({ type: 'clock_in', data: { time: iso }, timestamp: now });
+    if (navigator.onLine) {
+      try {
+        const res = await fetch(`${API}/shifts/clock-in`, {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ worker_id: state.worker.id, timestamp: iso })
+        });
+        const shift = await res.json();
+        state.shiftId = shift.shift_id;
+        saveLocalState();
+      } catch {}
+    }
+  } else {
+    endShift();
+  }
+}
+
+async function endShift() {
+  if (state.currentTask) completeTask();
+  const now = Date.now();
+  const iso = new Date(now).toISOString();
+  state.clockedIn = false;
+  document.getElementById('clockBtn').textContent = 'Clock In';
+  document.getElementById('clockBtn').className = 'big-btn btn-clockin';
+  document.getElementById('shiftStatus').textContent = 'Not Clocked In';
+  document.getElementById('taskSection').classList.add('hidden');
+  document.getElementById('currentTaskBanner').style.display = 'none';
+  addToQueue({ type: 'clock_out', data: { time: iso, shift_id: state.shiftId }, timestamp: now });
+  if (navigator.onLine && state.shiftId) {
+    try {
+      await fetch(`${API}/shifts/clock-out`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ worker_id: state.worker.id, shift_id: state.shiftId, timestamp: iso })
+      });
+    } catch {}
+  }
+  state.shiftId = null;
+  saveLocalState();
+  updateStats();
+  loadHistory();
+}
+
+async function startTask(activity) {
+  if (state.currentTask) completeTask();
+  state.currentTask = { activity, startTime: Date.now(), equipment: document.getElementById('equipmentInput').value, notes: document.getElementById('notesInput').value };
+  state.taskStartTime = Date.now();
+  document.querySelectorAll('.activity-btn').forEach(btn => {
+    btn.classList.remove('active-task');
+    if (btn.textContent === activity) btn.classList.add('active-task');
+  });
+  updateTaskBanner();
+  saveLocalState();
+}
+
+function updateTaskBanner() {
+  const banner = document.getElementById('currentTaskBanner');
+  if (state.currentTask) {
+    banner.style.display = 'flex';
+    document.getElementById('currentTaskName').textContent = state.currentTask.activity;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+async function completeTask() {
+  if (!state.currentTask) return;
+  const end = Date.now();
+  const dur = Math.round((end - state.currentTask.startTime) / 1000);
+  const task = {
+    id: `local_${Date.now()}`, activity: state.currentTask.activity, equipment: state.currentTask.equipment,
+    notes: state.currentTask.notes, startTime: new Date(state.currentTask.startTime).toISOString(),
+    endTime: new Date(end).toISOString(), duration: dur, date: new Date().toISOString().split('T')[0], synced: false
+  };
+  state.tasks.push(task);
+  addToQueue({ type: 'task', data: { ...task, shift_id: state.shiftId || 0 }, timestamp: end });
+  if (navigator.onLine && state.shiftId) {
+    try {
+      await fetch(`${API}/tasks`, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ shift_id: state.shiftId, worker_id: state.worker.id, activity: task.activity, equipment: task.equipment, notes: task.notes, start_time: task.startTime, end_time: task.endTime, duration_seconds: task.duration, sync_id: task.id })
+      });
+      task.synced = true;
+    } catch {}
+  }
+  state.currentTask = null;
+  state.taskStartTime = null;
+  document.getElementById('equipmentInput').value = '';
+  document.getElementById('notesInput').value = '';
+  document.querySelectorAll('.activity-btn').forEach(btn => btn.classList.remove('active-task'));
+  document.getElementById('currentTaskBanner').style.display = 'none';
+  saveLocalState();
+  updateStats();
+  loadHistory();
+}
+
+async function fetchServerTasks() {
+  if (!state.shiftId || !navigator.onLine) return;
+  try { await fetch(`${API}/tasks/shift/${state.shiftId}`); } catch {}
+}
+
+function formatDuration(s) {
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function formatTime(t) {
+  return new Date(t).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+setInterval(() => {
+  document.getElementById('clockTime').textContent = new Date().toLocaleTimeString('en-US', { hour12: false });
+  if (state.currentTask && state.taskStartTime) {
+    const e = Math.floor((Date.now() - state.taskStartTime) / 1000);
+    document.getElementById('taskTimer').textContent = `${Math.floor(e/60).toString().padStart(2,'0')}:${(e%60).toString().padStart(2,'0')}`;
+  }
+}, 1000);
+
+function updateStats() {
+  const today = new Date().toISOString().split('T')[0];
+  const todayTasks = state.tasks.filter(t => t.date === today);
+  const totalSeconds = todayTasks.reduce((sum, t) => sum + (t.duration || 0), 0);
+  const hours = (totalSeconds / 3600).toFixed(1);
+  const productive = todayTasks.filter(t => !['Delay', 'Safety'].includes(t.activity)).reduce((sum, t) => sum + (t.duration || 0), 0);
+  let efficiency = 0;
+  if (state.clockedIn && state.clockInTime) {
+    const shiftDur = (Date.now() - state.clockInTime) / 1000;
+    efficiency = shiftDur > 0 ? Math.round((productive / shiftDur) * 100) : 0;
+  } else if (totalSeconds > 0) {
+    efficiency = Math.round((productive / totalSeconds) * 100);
+  }
+  document.getElementById('statHours').textContent = hours;
+  document.getElementById('statTasks').textContent = todayTasks.length;
+  document.getElementById('statEfficiency').textContent = efficiency + '%';
+  document.getElementById('statProductive').textContent = totalSeconds > 0 ? Math.round((productive / totalSeconds) * 100) + '%' : '0%';
+  document.getElementById('effBar').style.width = Math.min(efficiency, 100) + '%';
+  document.getElementById('effBar').textContent = efficiency + '%';
+
+  const groups = {};
+  todayTasks.forEach(t => { groups[t.activity] = (groups[t.activity] || 0) + (t.duration || 0); });
+  document.getElementById('breakdownList').innerHTML = Object.entries(groups).sort((a, b) => b[1] - a[1]).map(([a, s]) => {
+    const pct = totalSeconds > 0 ? Math.round((s / totalSeconds) * 100) : 0;
+    return `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333;"><span>${a}</span><div style="text-align: right;"><div style="color: #f59e0b; font-weight: 600;">${formatDuration(s)}</div><div style="font-size: 12px; color: #666;">${pct}%</div></div></div>`;
+  }).join('') || '<p style="color: #666; text-align: center; padding: 20px;">No data</p>';
+}
+
+function loadHistory() {
+  const filter = document.getElementById('historyDate').value;
+  const today = new Date().toISOString().split('T')[0];
+  const filtered = state.tasks.filter(t => t.date === (filter || today)).sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+  if (!filtered.length) {
+    document.getElementById('historyList').innerHTML = '<p style="color: #666; text-align: center; padding: 40px;">No entries</p>';
+    return;
+  }
+  document.getElementById('historyList').innerHTML = filtered.map(t => `
+    <div class="log-entry">
+      <div class="log-info">
+        <h3>${t.activity}</h3>
+        <p>${t.equipment || 'No equipment'}</p>
+        ${t.notes ? `<p style="margin-top: 4px; font-style: italic;">"${t.notes}"</p>` : ''}
+        <span class="log-duration">${formatDuration(t.duration)}</span>
+        <span class="sync-indicator ${t.synced ? 'synced' : 'pending'}">${t.synced ? '✓ Synced' : '⏳ Pending'}</span>
+      </div>
+      <div style="font-size: 13px; color: #666; text-align: right;">
+        ${formatTime(t.startTime)}<br><span style="color: #444;">↓</span><br>${formatTime(t.endTime)}
+      </div>
+    </div>
+  `).join('');
+}
+
+function exportData() {
+  const headers = ['Date', 'Activity', 'Equipment', 'Start', 'End', 'Duration(min)', 'Notes', 'Synced'];
+  const rows = state.tasks.map(t => [t.date, t.activity, t.equipment || '', new Date(t.startTime).toLocaleString(), new Date(t.endTime).toLocaleString(), (t.duration / 60).toFixed(1), t.notes || '', t.synced ? 'Yes' : 'No']);
+  const csv = [headers, ...rows].map(r => r.map(x => `"${x}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `minelog_${state.worker.name}_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click();
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.querySelectorAll('.content').forEach(c => c.classList.add('hidden'));
+  document.getElementById(`tab-${tab}`).classList.remove('hidden');
+  if (tab === 'stats') updateStats();
+  if (tab === 'history') loadHistory();
+}
+
+window.addEventListener('online', () => { updateSyncStatus('online'); attemptSync(); });
+window.addEventListener('offline', () => updateSyncStatus('offline'));
+if (navigator.onLine) updateSyncStatus('online'); else updateSyncStatus('offline');
+
+document.getElementById('historyDate').value = new Date().toISOString().split('T')[0];
+</script>
+</body>
+</html>
